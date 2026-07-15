@@ -18,3 +18,8 @@ npm run dev
 ```
 
 生成数据库迁移：`npm run db:generate`。部署环境通过 `.openai/hosting.json` 注入 `DB`。
+
+## 部署
+
+- Vercel 使用标准 Next.js 构建：`npm run build`
+- OpenAI Sites / Cloudflare 使用：`npm run build:sites`
