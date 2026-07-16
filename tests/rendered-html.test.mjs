@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("提供中文内部工作台与项目数据隔离", async () => {
-  const [page, layout, schema] = await Promise.all([
+  const [page, layout, schema, migration, auth] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202607160001_partner_crm.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/internal-auth.ts", import.meta.url), "utf8"),
   ]);
   assert.match(layout, /伙伴智库/);
   assert.match(layout, /zh-CN/);
@@ -16,4 +18,6 @@ test("提供中文内部工作台与项目数据隔离", async () => {
   assert.match(page, /switchProject/);
   assert.match(schema, /campaignPartners/);
   assert.match(schema, /partner_performance/);
+  assert.match(migration, /enable row level security/);
+  assert.match(auth, /httpOnly|SESSION_COOKIE/);
 });

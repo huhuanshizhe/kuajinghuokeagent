@@ -19,7 +19,9 @@ npm install
 npm run dev
 ```
 
-生成数据库迁移：`npm run db:generate`。部署环境通过 `.openai/hosting.json` 注入 `DB`。
+正式数据使用 Supabase PostgreSQL。迁移文件位于 `supabase/migrations/`，生产环境必须配置 `NEXT_PUBLIC_SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`INTERNAL_ACCESS_PASSWORD` 和 `INTERNAL_SESSION_SECRET`。
+
+所有公开表均启用 RLS；管理员密钥只在服务器 Route Handlers 中使用。项目创建、伙伴读取、CRM 状态更新、活动日志与触达草稿均通过受内部登录保护的服务器 API 完成。
 
 ## 部署
 
