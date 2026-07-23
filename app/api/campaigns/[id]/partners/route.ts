@@ -15,7 +15,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (error) throw error;
 
     // 批量查询所有伙伴的联系方式
-    const partnerIds = (data ?? []).map(cp => cp.partner?.id).filter(Boolean);
+    type CampaignPartnerRow = { id: string; score: number; tier: string; score_reason: unknown; crm_status: string; partner: { id: string; display_name: string; email: string | null; other_contact: string | null; [k: string]: unknown } | null };
+    const rows = (data ?? []) as unknown as CampaignPartnerRow[];
+    const partnerIds = rows.map(cp => cp.partner?.id).filter(Boolean) as string[];
     let contactsMap: Record<string, { type: string; value: string }[]> = {};
     if (partnerIds.length > 0) {
       const { data: contacts } = await supabase
@@ -29,9 +31,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     }
 
     // 附加联系方式到每个 partner
-    const enriched = (data ?? []).map(cp => ({
+    const enriched = rows.map(cp => ({
       ...cp,
-      contacts: contactsMap[cp.partner?.id] ?? [],
+      contacts: contactsMap[cp.partner?.id ?? ""] ?? [],
     }));
 
     return NextResponse.json({ data: enriched });
