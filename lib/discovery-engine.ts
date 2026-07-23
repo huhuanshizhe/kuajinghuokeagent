@@ -1,4 +1,5 @@
 import { braveSearch, type BraveSearchResult } from "./brave-search";
+import { extractEmails, extractPhones, hunterDomainSearch } from "./contact-extractor";
 
 export interface Campaign {
   id: string;
@@ -23,6 +24,8 @@ export interface RawPartner {
   canonical_key: string;
   description: string;
   audience_profile: Record<string, unknown>;
+  emails: string[];
+  phones: string[];
 }
 
 // 生成搜索词：结合产品、伙伴类型、平台和市场
@@ -154,6 +157,16 @@ export async function parseResults(
     if (["onlyfans", "porn", "xxx", "gambling", "casino", "crypto", "bitcoin"].some(bad => titleLower.includes(bad))) continue;
 
     const cleanDesc = result.description.replace(/<[^>]+>/g, "").slice(0, 500);
+    // 只从 description 提取邮箱，且排除结果自身域名的邮箱（平台方邮箱不是伙伴联系方式）
+    const resultDomain = host.split(".").slice(-2).join("."); // e.g. "modash.io"
+    const allEmails = extractEmails(cleanDesc);
+    const emails = allEmails.filter(e => {
+      const emailDomain = e.split("@")[1]?.toLowerCase() ?? "";
+      // 排除搜索结果所在域名的邮箱
+      if (emailDomain === resultDomain || emailDomain.endsWith("." + resultDomain)) return false;
+      return true;
+    });
+    const phones = extractPhones(cleanDesc);
 
     partners.push({
       display_name: name,
@@ -172,6 +185,8 @@ export async function parseResults(
         source_host: host,
         description: cleanDesc,
       },
+      emails,
+      phones,
     });
   }
 
@@ -247,11 +262,14 @@ export async function runDiscoveryForCampaign(
   insertQuery: (q: string, source: string) => Promise<string>,
   updateQuery: (id: string, status: string, count: number) => Promise<void>,
   upsertPartner: (p: RawPartner) => Promise<string>,
-  insertCampaignPartner: (campaignId: string, partnerId: string, score: number, tier: string, queries: string[]) => Promise<void>
-): Promise<{ found: number; qualified: number; queriesRun: number }> {
+  insertCampaignPartner: (campaignId: string, partnerId: string, score: number, tier: string, queries: string[]) => Promise<void>,
+  insertContacts: (partnerId: string, emails: string[], phones: string[]) => Promise<void>
+): Promise<{ found: number; qualified: number; queriesRun: number; emailsFound: number; phonesFound: number }> {
   const queries = generateQueries(campaign);
   let totalFound = 0;
   let totalQualified = 0;
+  let totalEmails = 0;
+  let totalPhones = 0;
 
   for (const q of queries) {
     const queryId = await insertQuery(q, "brave");
@@ -266,6 +284,14 @@ export async function runDiscoveryForCampaign(
 
         const partnerId = await upsertPartner(partner);
         await insertCampaignPartner(campaign.id, partnerId, s, assignTier(s), [q]);
+
+        // 保存联系方式
+        if (partner.emails.length > 0 || partner.phones.length > 0) {
+          await insertContacts(partnerId, partner.emails, partner.phones);
+          totalEmails += partner.emails.length;
+          totalPhones += partner.phones.length;
+        }
+
         if (s >= 60) totalQualified++;
       }
 
@@ -278,7 +304,7 @@ export async function runDiscoveryForCampaign(
     if (q !== queries[queries.length - 1]) await new Promise(r => setTimeout(r, 1100));
   }
 
-  return { found: totalFound, qualified: totalQualified, queriesRun: queries.length };
+  return { found: totalFound, qualified: totalQualified, queriesRun: queries.length, emailsFound: totalEmails, phonesFound: totalPhones };
 }
 
 // 简单中英翻译映射

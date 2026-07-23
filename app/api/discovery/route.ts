@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { requireInternalAccess } from "@/lib/internal-auth";
 import { runDiscoveryForCampaign, type Campaign, type RawPartner } from "@/lib/discovery-engine";
+import { hunterDomainSearch } from "@/lib/contact-extractor";
 
 export async function POST(request: NextRequest) {
   const auth = await requireInternalAccess(request);
@@ -118,8 +119,73 @@ export async function POST(request: NextRequest) {
           source_queries: queries,
           crm_status: "新发现",
         });
+      },
+
+      // insertContacts
+      async (partnerId, emails, phones) => {
+        // 先查已有的联系方式，避免重复
+        const { data: existing } = await supabase
+          .from("contacts")
+          .select("value")
+          .eq("partner_id", partnerId);
+        const existingValues = new Set((existing ?? []).map(c => c.value));
+
+        const toInsert: { partner_id: string; type: string; value: string; verified: boolean }[] = [];
+        for (const email of emails) {
+          if (!existingValues.has(email)) {
+            toInsert.push({ partner_id: partnerId, type: "email", value: email, verified: false });
+          }
+        }
+        for (const phone of phones) {
+          if (!existingValues.has(phone)) {
+            toInsert.push({ partner_id: partnerId, type: "whatsapp", value: phone, verified: false });
+          }
+        }
+        if (toInsert.length > 0) {
+          await supabase.from("contacts").insert(toInsert);
+        }
       }
     );
+
+    // === Hunter 补充：对独立博客类伙伴进行域名邮箱查找 ===
+    if (process.env.HUNTER_API_KEY && result.found > 0) {
+      try {
+        const { data: blogPartners } = await supabase
+          .from("partners")
+          .select("id, website, display_name")
+          .eq("primary_platform", "独立博客")
+          .not("website", "is", null)
+          .limit(10);
+
+        for (const bp of (blogPartners ?? [])) {
+          // 检查是否已有邮箱
+          const { data: existingEmails } = await supabase
+            .from("contacts")
+            .select("id")
+            .eq("partner_id", bp.id)
+            .eq("type", "email");
+          if ((existingEmails ?? []).length > 0) continue;
+
+          try {
+            const domain = new URL(bp.website!).hostname.replace("www.", "");
+            const hunterResults = await hunterDomainSearch(domain);
+            if (hunterResults.length > 0) {
+              const emails = hunterResults.flatMap(h => h.emails).filter(Boolean);
+              if (emails.length > 0) {
+                await supabase.from("contacts").insert(
+                  emails.map(e => ({ partner_id: bp.id, type: "email", value: e, verified: true, source_url: bp.website }))
+                );
+                // 同时更新 partners.email 字段
+                await supabase.from("partners").update({ email: emails[0] }).eq("id", bp.id);
+                result.emailsFound += emails.length;
+              }
+            }
+          } catch { /* 单个 Hunter 查询失败不影响整体 */ }
+          // Hunter API 限速：每秒 1 次
+          await new Promise(r => setTimeout(r, 1100));
+        }
+      } catch { /* Hunter 整体失败不影响结果 */ }
+    }
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

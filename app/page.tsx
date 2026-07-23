@@ -2,28 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Partner = { name:string; handle:string; type:string; platform:string; niche:string; followers:string; engagement:string; score:number; tier:"A"|"B"|"C"; status:string; contact:string; color:string; initials:string };
+type Contact = { type: string; value: string };
+type Partner = { name:string; handle:string; type:string; platform:string; niche:string; followers:string; engagement:string; score:number; tier:"A"|"B"|"C"; status:string; contact:string; color:string; initials:string; contacts:Contact[] };
 type Project = { id:string; databaseId?:string; isSample?:boolean; name:string; brand:string; product:string; market:string; code:string; description:string; partnerTypes:string; signals:string; cooperation:string; metrics:{found:number;qualified:number;ready:number;score:number}; partners:Partner[] };
 
 const initialProjects: Project[] = [
   { id:"heels-us", name:"美国手工高跟鞋合作伙伴开发", brand:"AORARA", product:"手工高跟鞋", market:"美国", code:"HH-US-01", description:"优先寻找拥有美国女性受众、近期发布鞋履内容的中小型创作者与婚礼时尚联盟站。", partnerTypes:"KOC · 5千–8万粉丝 / 婚礼博主 / 时尚联盟站", signals:"试穿 · 鞋履测评 · 婚礼穿搭", cooperation:"产品寄样 · 12% 佣金", metrics:{found:248,qualified:67,ready:41,score:78}, partners:[
-    {name:"Sofia Reyes",handle:"@sofiastyled",type:"KOC",platform:"Instagram",niche:"高端鞋履 · 穿搭",followers:"4.28万",engagement:"4.8%",score:92,tier:"A",status:"待联系",contact:"sofia@styled.co",color:"#ead7c3",initials:"SR"},
-    {name:"The Bridal Edit",handle:"thebridaledit.com",type:"联盟站",platform:"独立博客",niche:"婚礼时尚 · 测评",followers:"12.8万",engagement:"3.9%",score:88,tier:"A",status:"已入选",contact:"hello@thebridaledit.com",color:"#d4d9ef",initials:"BE"},
-    {name:"Maya Chen",handle:"@walkwithmaya",type:"创作者",platform:"YouTube",niche:"试穿 · 小个子穿搭",followers:"7.62万",engagement:"5.2%",score:86,tier:"B",status:"已联系",contact:"business@mayachen.tv",color:"#cfe6dc",initials:"MC"},
-    {name:"Modern Heel",handle:"modernheel.com",type:"媒体",platform:"独立博客",niche:"鞋履 · 编辑内容",followers:"9.1万",engagement:"2.7%",score:79,tier:"B",status:"已回复",contact:"editor@modernheel.com",color:"#e6d6cf",initials:"MH"},
-    {name:"Alexis Ward",handle:"@alexiswardrobe",type:"KOC",platform:"Instagram",niche:"职场穿搭 · 鞋履测评",followers:"1.84万",engagement:"6.1%",score:77,tier:"B",status:"新发现",contact:"已找到联系页面",color:"#d8e3cd",initials:"AW"}
+    {name:"Sofia Reyes",handle:"@sofiastyled",type:"KOC",platform:"Instagram",niche:"高端鞋履 · 穿搭",followers:"4.28万",engagement:"4.8%",score:92,tier:"A",status:"待联系",contact:"sofia@styled.co",contacts:[],color:"#ead7c3",initials:"SR"},
+    {name:"The Bridal Edit",handle:"thebridaledit.com",type:"联盟站",platform:"独立博客",niche:"婚礼时尚 · 测评",followers:"12.8万",engagement:"3.9%",score:88,tier:"A",status:"已入选",contact:"hello@thebridaledit.com",contacts:[],color:"#d4d9ef",initials:"BE"},
+    {name:"Maya Chen",handle:"@walkwithmaya",type:"创作者",platform:"YouTube",niche:"试穿 · 小个子穿搭",followers:"7.62万",engagement:"5.2%",score:86,tier:"B",status:"已联系",contact:"business@mayachen.tv",contacts:[],color:"#cfe6dc",initials:"MC"},
+    {name:"Modern Heel",handle:"modernheel.com",type:"媒体",platform:"独立博客",niche:"鞋履 · 编辑内容",followers:"9.1万",engagement:"2.7%",score:79,tier:"B",status:"已回复",contact:"editor@modernheel.com",contacts:[],color:"#e6d6cf",initials:"MH"},
+    {name:"Alexis Ward",handle:"@alexiswardrobe",type:"KOC",platform:"Instagram",niche:"职场穿搭 · 鞋履测评",followers:"1.84万",engagement:"6.1%",score:77,tier:"B",status:"新发现",contact:"已找到联系页面",contacts:[],color:"#d8e3cd",initials:"AW"}
   ]},
   { id:"tibet-global", name:"藏文化产品全球内容合作", brand:"TIBETAN TREASURES", product:"藏文化艺术与冥想产品", market:"美国、英国", code:"TC-GL-02", description:"寻找关注佛教文化、冥想、瑜伽与艺术收藏的创作者和媒体，强调文化尊重与内容质量。", partnerTypes:"灵性博主 / 瑜伽创作者 / 艺术媒体", signals:"冥想 · 佛教文化 · 艺术收藏", cooperation:"内容共创 · 专家访谈 · 寄样", metrics:{found:136,qualified:38,ready:19,score:74}, partners:[
-    {name:"Quiet Mind Studio",handle:"@quietmindstudio",type:"创作者",platform:"YouTube",niche:"冥想 · 东方文化",followers:"8.6万",engagement:"4.4%",score:90,tier:"A",status:"待联系",contact:"hello@quietmind.studio",color:"#ddd1bd",initials:"QM"},
-    {name:"Sacred Arts Journal",handle:"sacredartsjournal.com",type:"媒体",platform:"独立博客",niche:"宗教艺术 · 收藏",followers:"6.4万",engagement:"3.6%",score:85,tier:"A",status:"已入选",contact:"editor@sacredartsjournal.com",color:"#d5c8b4",initials:"SA"},
-    {name:"Emma Flow",handle:"@emmaflowyoga",type:"KOL",platform:"Instagram",niche:"瑜伽 · 正念生活",followers:"15.2万",engagement:"3.2%",score:81,tier:"B",status:"洽谈中",contact:"collab@emmaflow.com",color:"#cfded5",initials:"EF"},
-    {name:"The Dharma Path",handle:"thedharmapath.org",type:"社群",platform:"论坛",niche:"佛教学习 · 社群",followers:"3.1万",engagement:"5.8%",score:76,tier:"B",status:"新发现",contact:"管理员联系表单",color:"#e6d9c9",initials:"DP"}
+    {name:"Quiet Mind Studio",handle:"@quietmindstudio",type:"创作者",platform:"YouTube",niche:"冥想 · 东方文化",followers:"8.6万",engagement:"4.4%",score:90,tier:"A",status:"待联系",contact:"hello@quietmind.studio",contacts:[],color:"#ddd1bd",initials:"QM"},
+    {name:"Sacred Arts Journal",handle:"sacredartsjournal.com",type:"媒体",platform:"独立博客",niche:"宗教艺术 · 收藏",followers:"6.4万",engagement:"3.6%",score:85,tier:"A",status:"已入选",contact:"editor@sacredartsjournal.com",contacts:[],color:"#d5c8b4",initials:"SA"},
+    {name:"Emma Flow",handle:"@emmaflowyoga",type:"KOL",platform:"Instagram",niche:"瑜伽 · 正念生活",followers:"15.2万",engagement:"3.2%",score:81,tier:"B",status:"洽谈中",contact:"collab@emmaflow.com",contacts:[],color:"#cfded5",initials:"EF"},
+    {name:"The Dharma Path",handle:"thedharmapath.org",type:"社群",platform:"论坛",niche:"佛教学习 · 社群",followers:"3.1万",engagement:"5.8%",score:76,tier:"B",status:"新发现",contact:"管理员联系表单",contacts:[],color:"#e6d9c9",initials:"DP"}
   ]},
   { id:"pet-us", name:"美国宠物口腔护理达人计划", brand:"PETSMILE LAB", product:"宠物口腔护理产品", market:"美国", code:"PC-US-03", description:"重点开发兽医、宠物护理博主和专业宠物媒体，优先选择可信度高、内容科学严谨的合作伙伴。", partnerTypes:"兽医 KOL / 宠物护理博主 / 行业媒体", signals:"口腔护理 · 兽医科普 · 产品测评", cooperation:"专业测评 · 付费内容 · 联盟佣金", metrics:{found:184,qualified:52,ready:33,score:82}, partners:[
-    {name:"Dr. Kelly Pets",handle:"@drkellypets",type:"兽医 KOL",platform:"YouTube",niche:"兽医科普 · 口腔健康",followers:"19.8万",engagement:"5.6%",score:94,tier:"A",status:"已回复",contact:"team@drkellypets.com",color:"#cfe1dd",initials:"DK"},
-    {name:"Happy Paws Daily",handle:"@happypawsdaily",type:"KOC",platform:"Instagram",niche:"宠物护理 · 产品体验",followers:"5.3万",engagement:"6.4%",score:89,tier:"A",status:"待联系",contact:"partnerships@happypaws.co",color:"#e8d6c1",initials:"HP"},
-    {name:"Pet Care Review",handle:"petcarereview.com",type:"联盟站",platform:"独立博客",niche:"宠物用品 · 测评",followers:"11.2万",engagement:"3.1%",score:83,tier:"B",status:"已联系",contact:"reviews@petcarereview.com",color:"#d7ddef",initials:"PR"},
-    {name:"Vet Community US",handle:"vetcommunity.us",type:"社群",platform:"论坛",niche:"兽医交流 · 临床经验",followers:"2.7万",engagement:"7.2%",score:78,tier:"B",status:"新发现",contact:"管理员联系页面",color:"#d4e5d2",initials:"VC"}
+    {name:"Dr. Kelly Pets",handle:"@drkellypets",type:"兽医 KOL",platform:"YouTube",niche:"兽医科普 · 口腔健康",followers:"19.8万",engagement:"5.6%",score:94,tier:"A",status:"已回复",contact:"team@drkellypets.com",contacts:[],color:"#cfe1dd",initials:"DK"},
+    {name:"Happy Paws Daily",handle:"@happypawsdaily",type:"KOC",platform:"Instagram",niche:"宠物护理 · 产品体验",followers:"5.3万",engagement:"6.4%",score:89,tier:"A",status:"待联系",contact:"partnerships@happypaws.co",contacts:[],color:"#e8d6c1",initials:"HP"},
+    {name:"Pet Care Review",handle:"petcarereview.com",type:"联盟站",platform:"独立博客",niche:"宠物用品 · 测评",followers:"11.2万",engagement:"3.1%",score:83,tier:"B",status:"已联系",contact:"reviews@petcarereview.com",contacts:[],color:"#d7ddef",initials:"PR"},
+    {name:"Vet Community US",handle:"vetcommunity.us",type:"社群",platform:"论坛",niche:"兽医交流 · 临床经验",followers:"2.7万",engagement:"7.2%",score:78,tier:"B",status:"新发现",contact:"管理员联系页面",contacts:[],color:"#d4e5d2",initials:"VC"}
   ]}
 ];
 
@@ -63,7 +64,7 @@ export default function Home() {
     try{
       const response=await fetch(`/api/campaigns/${next.databaseId}/partners`,{cache:"no-store"}); const result=await response.json();
       if(!response.ok||!result.data?.length)return;
-      const mapped:Partner[]=result.data.map((row:{score:number;tier:"A"|"B"|"C";crm_status:string;partner:Record<string,unknown>})=>{const p=row.partner;return{name:String(p.display_name),handle:String(p.profile_url??p.website??""),type:String(p.partner_type),platform:String(p.primary_platform),niche:Array.isArray(p.content_categories)?p.content_categories.join(" · "):"",followers:p.followers?Number(p.followers).toLocaleString("zh-CN"):"—",engagement:p.engagement_rate?`${(Number(p.engagement_rate)*100).toFixed(1)}%`:"—",score:Number(row.score??0),tier:row.tier??"C",status:row.crm_status,contact:String(p.email??p.other_contact??"待补充"),color:"#dbe7e1",initials:String(p.display_name).slice(0,2).toUpperCase()}});
+      const mapped:Partner[]=result.data.map((row:{score:number;tier:"A"|"B"|"C";crm_status:string;contacts:Contact[];partner:Record<string,unknown>})=>{const p=row.partner;const contacts=row.contacts||[];const emailContact=contacts.find(c=>c.type==="email");const phoneContact=contacts.find(c=>c.type==="whatsapp");const displayContact=emailContact?.value??phoneContact?.value??String(p.email??p.other_contact??"待补充");return{name:String(p.display_name),handle:String(p.profile_url??p.website??""),type:String(p.partner_type),platform:String(p.primary_platform),niche:Array.isArray(p.content_categories)?p.content_categories.join(" · "):"",followers:p.followers?Number(p.followers).toLocaleString("zh-CN"):"—",engagement:p.engagement_rate?`${(Number(p.engagement_rate)*100).toFixed(1)}%`:"—",score:Number(row.score??0),tier:row.tier??"C",status:row.crm_status,contact:displayContact,color:"#dbe7e1",initials:String(p.display_name).slice(0,2).toUpperCase(),contacts}});
       setProjectList(current=>current.map(item=>item.id===next.id?{...item,partners:mapped,isSample:false,metrics:{...item.metrics,found:mapped.length,qualified:mapped.filter(p=>p.score>=70).length,ready:mapped.filter(p=>p.contact!=="待补充").length,score:Math.round(mapped.reduce((sum,p)=>sum+p.score,0)/mapped.length)}}:item));
       setSelectedName(mapped[0]?.name??"");
     }catch{notify("读取正式伙伴数据失败")}
