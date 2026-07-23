@@ -12,6 +12,19 @@ export interface Campaign {
   platforms: string[];
 }
 
+export interface PartnerICP {
+  id: string;
+  partner_type: string;
+  content_categories: string[];
+  audience_countries: string[];
+  audience_gender: string[];
+  audience_age: string[];
+  preferred_follower_range: string | null;
+  minimum_engagement_rate: number | null;
+  content_style: string[];
+  exclusions: string[];
+}
+
 export interface RawPartner {
   display_name: string;
   partner_type: string;
@@ -28,18 +41,27 @@ export interface RawPartner {
   phones: string[];
 }
 
-// 生成搜索词：结合产品、伙伴类型、平台和市场
-export function generateQueries(campaign: Campaign): string[] {
+// 生成搜索词：结合产品、伙伴类型、平台和市场（以及 ICP 数据）
+export function generateQueries(campaign: Campaign, icps?: PartnerICP[]): string[] {
   const queries: string[] = [];
   const productEn = translateProduct(campaign.product_name);
   const countries = campaign.target_countries.slice(0, 2);
   const countryEn = countries.map(translateCountry);
   const platforms = campaign.platforms.slice(0, 3);
 
+  // 从 ICP 中提取内容分类关键词，用于更精准的搜索
+  const icpCategories = icps?.flatMap(icp => icp.content_categories).filter(Boolean) ?? [];
+  const categoryEn = icpCategories.map(translateCategory).filter(Boolean);
+
   // 英文搜索词（覆盖更广）
   for (const platform of platforms) {
     const platformLower = platform.toLowerCase();
+    // 基础搜索词
     queries.push(`${productEn} influencer ${platformLower} ${countryEn.join(" ")}`);
+    // 加入 ICP 内容分类的搜索词
+    if (categoryEn.length > 0) {
+      queries.push(`${productEn} ${categoryEn[0]} ${platformLower} ${countryEn[0] ?? ""}`);
+    }
     // 对 YouTube 和 Instagram 加 site: 限定，直接找到频道/账号页
     if (platformLower === "youtube") {
       queries.push(`site:youtube.com "${productEn}" channel ${countryEn[0] ?? ""}`);
@@ -263,9 +285,10 @@ export async function runDiscoveryForCampaign(
   updateQuery: (id: string, status: string, count: number) => Promise<void>,
   upsertPartner: (p: RawPartner) => Promise<string>,
   insertCampaignPartner: (campaignId: string, partnerId: string, score: number, tier: string, queries: string[]) => Promise<void>,
-  insertContacts: (partnerId: string, emails: string[], phones: string[]) => Promise<void>
+  insertContacts: (partnerId: string, emails: string[], phones: string[]) => Promise<void>,
+  icps?: PartnerICP[]
 ): Promise<{ found: number; qualified: number; queriesRun: number; emailsFound: number; phonesFound: number }> {
-  const queries = generateQueries(campaign);
+  const queries = generateQueries(campaign, icps);
   let totalFound = 0;
   let totalQualified = 0;
   let totalEmails = 0;
@@ -324,4 +347,14 @@ function translateProduct(cn: string): string {
     "宠物口腔护理产品": "pet oral care products",
   };
   return map[cn] ?? cn;
+}
+
+function translateCategory(cn: string): string {
+  const map: Record<string, string> = {
+    "时尚穿搭": "fashion", "美妆护肤": "beauty", "健康养生": "wellness",
+    "宠物用品": "pet care", "家居生活": "home lifestyle", "母婴育儿": "parenting",
+    "文化艺术": "culture art", "科技数码": "tech", "运动户外": "sports outdoor",
+    "食品饮料": "food beverage", "生活方式": "lifestyle", "产品测评": "product review",
+  };
+  return map[cn] ?? "";
 }

@@ -43,6 +43,48 @@ type OutreachItem = {
 
 type IntegrationStatus = { name: string; key: string; configured: boolean; description: string; icon: string };
 
+type ICPData = {
+  id: string; partner_type: string; content_categories: string[]; audience_countries: string[];
+  audience_gender: string[]; audience_age: string[]; preferred_follower_range: string | null;
+  minimum_engagement_rate: number | null; content_style: string[]; exclusions: string[];
+};
+
+const partnerTypeOptions = ["KOC","创作者","KOL","联盟站","媒体","社群","兽医 KOL"];
+const contentCategoryOptions = ["时尚穿搭","美妆护肤","健康养生","宠物用品","家居生活","母婴育儿","文化艺术","科技数码","运动户外","食品饮料","生活方式","产品测评"];
+
+function IcpTagList({items,onChange,allOptions}:{items:string[];onChange:(v:string[])=>void;allOptions:string[]}) {
+  const [adding,setAdding] = useState(false);
+  return <div style={{display:"flex",flexWrap:"wrap",gap:"4px",alignItems:"center"}}>
+    {items.map((item,i)=><span key={i} style={{background:"#e4f1eb",color:"#14735f",borderRadius:"10px",padding:"3px 8px",fontSize:"9px",fontWeight:650,display:"flex",alignItems:"center",gap:"4px"}}>{item}<button onClick={()=>onChange(items.filter((_,j)=>j!==i))} style={{border:0,background:"none",color:"#14735f",cursor:"pointer",fontSize:"12px",padding:0,lineHeight:1}}>×</button></span>)}
+    {adding?<select autoFocus defaultValue="" onChange={e=>{if(e.target.value){onChange([...items,e.target.value]);setAdding(false);}}} onBlur={()=>setAdding(false)} style={{fontSize:"9px",border:"1px solid #dce3df",borderRadius:"6px",padding:"3px 6px"}}><option value="" disabled>选择…</option>{allOptions.filter(o=>!items.includes(o)).map(o=><option key={o} value={o}>{o}</option>)}</select>:<button onClick={()=>setAdding(true)} style={{border:"1px dashed #c0d0ca",background:"none",borderRadius:"10px",padding:"3px 8px",fontSize:"9px",color:"#14735f",cursor:"pointer"}}>+ 添加</button>}
+  </div>;
+}
+
+function ICPEditor({icp,onSave}:{icp:ICPData;onSave:(icp:ICPData)=>Promise<void>}) {
+  const [data,setData] = useState<ICPData>(icp);
+  const [saving,setSaving] = useState(false);
+  const update = (field: keyof ICPData, value: unknown) => setData(prev => ({...prev, [field]: value}));
+  return <div style={{background:"#fafbf9",border:"1px solid var(--line)",borderRadius:"10px",padding:"16px",marginBottom:"12px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+        <span style={{fontSize:"10px",fontWeight:750,color:"#8a9692"}}>伙伴类型</span>
+        <select value={data.partner_type} onChange={e=>update("partner_type",e.target.value)} style={{border:"1px solid #dce3df",borderRadius:"6px",padding:"4px 8px",fontSize:"10px",fontWeight:650}}>{partnerTypeOptions.map(t=><option key={t}>{t}</option>)}</select>
+      </div>
+      <button disabled={saving} onClick={async()=>{setSaving(true);await onSave(data);setSaving(false);}} style={{background:"var(--green)",color:"white",border:0,borderRadius:"6px",padding:"5px 14px",fontSize:"9px",fontWeight:700,cursor:"pointer"}}>{saving?"保存中…":"保存"}</button>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>内容分类</label><IcpTagList items={data.content_categories} onChange={v=>update("content_categories",v)} allOptions={contentCategoryOptions}/></div>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>受众国家</label><IcpTagList items={data.audience_countries} onChange={v=>update("audience_countries",v)} allOptions={["美国","英国","德国","法国","日本","韩国","加拿大","澳大利亚","全球"]}/></div>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>受众性别</label><IcpTagList items={data.audience_gender} onChange={v=>update("audience_gender",v)} allOptions={["不限","女性","男性"]}/></div>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>受众年龄</label><IcpTagList items={data.audience_age} onChange={v=>update("audience_age",v)} allOptions={["13-17","18-24","25-34","35-44","45-54","55+"]}/></div>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>粉丝量偏好</label><input value={data.preferred_follower_range??""} onChange={e=>update("preferred_follower_range",e.target.value||null)} placeholder="如 5k-100k" style={{width:"100%",border:"1px solid #dce3df",borderRadius:"6px",padding:"5px 8px",fontSize:"10px"}}/></div>
+      <div><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>最低互动率</label><input type="number" step="0.01" value={data.minimum_engagement_rate??""} onChange={e=>update("minimum_engagement_rate",e.target.value?parseFloat(e.target.value):null)} placeholder="如 0.03 (3%)" style={{width:"100%",border:"1px solid #dce3df",borderRadius:"6px",padding:"5px 8px",fontSize:"10px"}}/></div>
+      <div style={{gridColumn:"1/-1"}}><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>内容风格</label><IcpTagList items={data.content_style} onChange={v=>update("content_style",v)} allOptions={["真实体验","产品测评","专业测评","对比分析","匠心工艺","视觉美感","文化内涵","科普教育","穿搭灵感","细节展示","故事性","品质感","生活场景"]}/></div>
+      <div style={{gridColumn:"1/-1"}}><label style={{fontSize:"8px",color:"#8a9692",fontWeight:750,display:"block",marginBottom:"5px"}}>排除条件</label><IcpTagList items={data.exclusions} onChange={v=>update("exclusions",v)} allOptions={["近期有竞品合作","内容质量不稳定","互动数据异常（疑似买粉）","文化不尊重或刻板印象","过度商业化","非专业宠物内容","动物虐待争议"]}/></div>
+    </div>
+  </div>;
+}
+
 export default function Home() {
   const [active,setActive] = useState("伙伴发现");
   const [projectList,setProjectList] = useState<Project[]>(initialProjects.map(item=>({...item,isSample:true})));
@@ -56,6 +98,9 @@ export default function Home() {
   const [dashboard,setDashboard] = useState<DashboardData|null>(null);
   const [outreach,setOutreach] = useState<OutreachItem[]>([]);
   const [integrations,setIntegrations] = useState<IntegrationStatus[]>([]);
+  const [icpModalOpen,setIcpModalOpen] = useState(false);
+  const [icpList,setIcpList] = useState<ICPData[]>([]);
+  const [icpLoading,setIcpLoading] = useState(false);
   const filtered = useMemo(()=>project.partners.filter(p=>(tier==="全部层级"||p.tier===tier.slice(0,1))&&`${p.name} ${p.type} ${p.niche} ${p.platform}`.toLowerCase().includes(query.toLowerCase())),[project,query,tier]);
   const notify=(msg:string)=>{setToast(msg);window.setTimeout(()=>setToast(""),2600)};
 
@@ -103,6 +148,10 @@ export default function Home() {
 
   const switchProject=(id:string)=>{const next=projectList.find(x=>x.id===id)??projectList[0];setProjectId(id);setSelectedName(next.partners[0]?.name??"");setQuery("");setTier("全部层级");notify(`已切换到：${next.name}`);void loadRemotePartners(next)};
   const runDiscovery=async()=>{if(databaseStatus!=="connected"){notify("请先完成 Supabase 与搜索数据源配置");return;}if(!project.databaseId){notify("当前项目尚未写入数据库");return;}setRunning(true);try{const response=await fetch("/api/discovery",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({campaignId:project.databaseId})});const result=await response.json();if(!response.ok)throw new Error(result.error);notify(`发现完成：找到 ${result.found} 个候选人，${result.qualified} 个符合条件`);await loadRemotePartners(project)}catch(error){notify(error instanceof Error?error.message:"发现任务失败")}finally{setRunning(false)}};
+
+  const loadICPs=async()=>{if(!project.databaseId)return;setIcpLoading(true);try{const r=await fetch(`/api/campaigns/${project.databaseId}/icp`,{cache:"no-store"});if(r.ok){const d=await r.json();setIcpList(d.data||[]);}}catch{notify("加载画像失败")}finally{setIcpLoading(false);}};
+  const generateICP=async()=>{if(!project.databaseId)return;setIcpLoading(true);try{const r=await fetch(`/api/campaigns/${project.databaseId}/icp/generate`,{method:"POST"});if(!r.ok){const d=await r.json();throw new Error(d.error);}const d=await r.json();setIcpList(d.data||[]);notify(`已生成 ${d.count} 个伙伴画像`)}catch(error){notify(error instanceof Error?error.message:"生成画像失败")}finally{setIcpLoading(false);}};
+  const saveICP=async(icp:ICPData)=>{if(!project.databaseId)return;try{const r=await fetch(`/api/campaigns/${project.databaseId}/icp`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(icp)});if(!r.ok)throw new Error((await r.json()).error);notify("画像已保存");await loadICPs();}catch(error){notify(error instanceof Error?error.message:"保存失败")}};
   const createProject=async(event:React.FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
     if(databaseStatus!=="connected"){notify("正式数据库尚未连接，暂时无法创建项目");return;}
@@ -238,7 +287,7 @@ export default function Home() {
         <div className="project-context"><span><b>{project.brand}</b> · {project.product}</span><span>目标市场：{project.market}</span><span>项目编号：{project.code}</span></div>
         <div className="campaign-head"><div><div className="eyebrow"><span className="live-dot"/> 项目发现任务运行中</div><h1>找到真正能够<br/><em>推动市场的合作伙伴</em></h1><p>{project.description}</p></div><div className="campaign-actions"><button className="secondary" onClick={()=>notify("AI 搜索策略已重新生成")}>↻ 重新生成策略</button><button className="run" onClick={runDiscovery} disabled={running}>{running?<><span className="spinner"/>正在搜索公开网络…</>:"▶ 运行伙伴发现"}</button></div></div>
         <div className="metric-grid"><article><div><span className="metric-icon mint">◎</span><small>已发现伙伴</small></div><strong>{project.metrics.found}</strong><p><b>+24</b> 来自上次任务</p></article><article><div><span className="metric-icon blue">✦</span><small>符合条件</small></div><strong>{project.metrics.qualified}</strong><p>{Math.round(project.metrics.qualified/project.metrics.found*100)}% 入选率</p></article><article><div><span className="metric-icon gold">↗</span><small>可以联系</small></div><strong>{project.metrics.ready}</strong><p>已找到并核验联系方式</p></article><article><div><span className="metric-icon lilac">◉</span><small>平均匹配分</small></div><strong>{project.metrics.score}<span>/100</span></strong><p><b>项目独立计算</b></p></article></div>
-        <section className="strategy-card"><div className="strategy-top"><div><span className="ai-badge">✦ AI 项目策略</span><h2>本项目的伙伴发现逻辑</h2><p>{project.description}</p></div><button onClick={()=>notify("已打开本项目的伙伴画像")}>查看伙伴画像 →</button></div><div className="strategy-tags"><div><small>目标伙伴</small><span>{project.partnerTypes}</span></div><div><small>内容信号</small><span>{project.signals}</span></div><div><small>合作方式</small><span>{project.cooperation}</span></div></div></section>
+        <section className="strategy-card"><div className="strategy-top"><div><span className="ai-badge">✦ AI 项目策略</span><h2>本项目的伙伴发现逻辑</h2><p>{project.description}</p></div><button onClick={()=>{setIcpModalOpen(true);void loadICPs();}}>查看伙伴画像 →</button></div><div className="strategy-tags"><div><small>目标伙伴</small><span>{project.partnerTypes}</span></div><div><small>内容信号</small><span>{project.signals}</span></div><div><small>合作方式</small><span>{project.cooperation}</span></div></div></section>
         <div className="table-head"><div><h2>本项目候选伙伴</h2><span>显示 {filtered.length} 条 · 项目共 {project.metrics.found} 条</span>{project.isSample&&<span className="sample-badge">样例数据，尚未来自正式搜索</span>}</div><div className="filters"><label>⌕<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索伙伴…"/></label><select value={tier} onChange={e=>setTier(e.target.value)}><option>全部层级</option><option>A 级</option><option>B 级</option><option>C 级</option></select><button>☷ 筛选 <sup>2</sup></button></div></div>
         <div className="partner-layout"><div className="partner-table"><div className="table-row table-labels"><span>合作伙伴</span><span>类型与平台</span><span>账号规模</span><span>匹配度</span><span>当前状态</span><span></span></div>{filtered.map(p=><button className={selected?.name===p.name?"table-row selected":"table-row"} key={p.name} onClick={()=>setSelectedName(p.name)}><span className="partner-cell"><i style={{background:p.color}}>{p.initials}</i><b>{p.name}<small>{p.handle}</small></b></span><span><b>{p.type}</b><small>{p.platform} · {p.niche}</small></span><span><b>{p.followers}</b><small>互动率 {p.engagement}</small></span><span className="score"><b>{p.score}</b><i className={`tier tier-${p.tier}`}>{p.tier}</i></span><span><i className="status">{p.status}</i></span><span className="dots">•••</span></button>)}</div>
           {selected&&<aside className="detail-panel"><div className="detail-project">仅属于项目：{project.code}</div><div className="detail-profile"><span style={{background:selected.color}}>{selected.initials}</span><h3>{selected.name}</h3><p>{selected.handle}</p><div><i>{selected.type}</i><i>{selected.platform}</i></div></div><div className="match-ring"><div><strong>{selected.score}</strong><small>/100</small></div><span><b>高度匹配</b><small>本项目候选池前 8%</small></span></div><div className="reason"><h4>✦ 为什么适合本项目</h4><ul><li>近期内容与"{project.product}"相关</li><li>核心受众覆盖目标市场：{project.market}</li><li>内容互动真实，更新频率稳定</li><li>已找到公开商务联系方式</li></ul></div><div className="risk"><b>△ 需要关注</b><span>正式联系前建议人工复核近期内容与品牌安全。</span></div><div className="contact"><small>推荐联系方式</small><b>{selected.contact}</b>{selected.contacts.length>0&&<div style={{marginTop:"0.5rem"}}>{selected.contacts.map(c=><span key={c.value} style={{display:"block",fontSize:"0.85rem",color:"#666"}}>{c.type==="email"?"📧":"📱"} {c.value}</span>)}</div>}</div><div className="detail-actions"><button onClick={()=>notify(`${selected.name} 已加入本项目待联系名单`)}>确认入选</button><button className="send" onClick={async()=>{if(!selected.contact||selected.contact==="待补充"){notify("该伙伴暂无联系方式");return;}try{const r=await fetch("/api/outreach",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({campaignPartnerId:(selected as any)._dbId,channel:selected.contact.includes("@")?"email":"other",subject:`合作邀请：${project.brand} × ${selected.name}`,body:`${selected.name} 您好，\n\n我们是 ${project.brand}，正在寻找 ${project.market} 市场的合作伙伴。我们对您的 ${selected.niche} 内容非常感兴趣。\n\n期待与您探讨合作机会。\n\n此致\n${project.brand} 团队`})});if(r.ok){notify("触达草稿已生成，请到「触达管理」查看");}else{notify("生成草稿失败")}}catch{notify("生成草稿失败")}}}>✦ 生成触达话术</button></div></aside>}
@@ -247,6 +296,7 @@ export default function Home() {
       </div>
     </section>
     {campaignOpen&&<div className="modal-backdrop" onMouseDown={()=>setCampaignOpen(false)}><form className="modal" onMouseDown={e=>e.stopPropagation()} onSubmit={createProject}><button type="button" className="modal-close" onClick={()=>setCampaignOpen(false)}>×</button><span className="ai-badge">新建独立项目</span><h2>创建合作伙伴开发项目</h2><p>每个项目的数据完全独立，包括画像、搜索词、伙伴池、触达记录和效果数据。</p><div className="form-grid"><label>项目名称<input name="name" required placeholder="例如：德国宠物护理伙伴开发"/></label><label>品牌名称<input name="brandName" required placeholder="请输入品牌名称"/></label><label>产品名称<input name="productName" required placeholder="请输入具体产品"/></label><label>目标市场<select name="targetCountry"><option>美国</option><option>英国</option><option>德国</option><option>全球</option></select></label><label className="wide">伙伴类型<div className="check-row"><span>✓ KOC</span><span>✓ 内容创作者</span><span>✓ 联盟站</span><span>＋ 垂直媒体</span></div></label></div><button className="create-submit">写入数据库并创建项目 →</button></form></div>}
+    {icpModalOpen&&<div className="modal-backdrop" onMouseDown={()=>setIcpModalOpen(false)}><div className="modal icp-modal" onMouseDown={e=>e.stopPropagation()} style={{maxWidth:"720px",maxHeight:"85vh",overflow:"auto"}}><button type="button" className="modal-close" onClick={()=>setIcpModalOpen(false)}>×</button><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}><div><span className="ai-badge">✦ 伙伴画像 ICP</span><h2 style={{margin:"8px 0 4px"}}>{project.name}</h2><p style={{color:"#74817d",fontSize:"11px",margin:0}}>定义理想伙伴的特征，画像直接影响搜索和评分</p></div><button className="primary" disabled={icpLoading} onClick={()=>{void generateICP();}} style={{flex:"0 0 auto",height:"36px"}}>{icpLoading?"生成中…":"✦ 自动生成画像"}</button></div>{icpList.length===0?(!icpLoading?<div style={{textAlign:"center",padding:"40px 0",color:"#8a9692"}}><p>尚未生成伙伴画像</p><p style={{fontSize:"10px"}}>点击"自动生成画像"根据项目信息创建，或手动添加</p></div>:<div style={{textAlign:"center",padding:"40px 0"}}>正在加载…</div>):icpList.map((icp,idx)=><ICPEditor key={icp.id||idx} icp={icp} onSave={saveICP}/>)}{icpList.length>0&&<button onClick={()=>{const newIcp:ICPData={id:"",partner_type:"创作者",content_categories:[],audience_countries:[],audience_gender:[],audience_age:[],preferred_follower_range:null,minimum_engagement_rate:null,content_style:[],exclusions:[]};setIcpList([...icpList,newIcp]);}} style={{marginTop:"12px",width:"100%",height:"36px",border:"1px dashed #c0d0ca",borderRadius:"8px",background:"#fafbf9",color:"#14735f",fontSize:"10px",fontWeight:700, cursor:"pointer"}}>+ 添加新画像</button>}</div></div>}
     {toast&&<div className="toast"><span>✓</span>{toast}</div>}
   </main>;
 }

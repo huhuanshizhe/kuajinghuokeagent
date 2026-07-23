@@ -36,6 +36,10 @@ export async function POST(request: NextRequest) {
       platforms: campaign.platforms ?? [],
     };
 
+    // 加载项目画像（ICP）
+    const { data: icps } = await supabase.from("partner_icps").select("*").eq("campaign_id", body.campaignId);
+    const icpData = (icps ?? []) as unknown as import("@/lib/discovery-engine").PartnerICP[];
+
     // 运行发现
     const result = await runDiscoveryForCampaign(
       campaignData,
@@ -144,7 +148,8 @@ export async function POST(request: NextRequest) {
         if (toInsert.length > 0) {
           await supabase.from("contacts").insert(toInsert);
         }
-      }
+      },
+      icpData
     );
 
     // === Hunter 补充：对独立博客类伙伴进行域名邮箱查找 ===
