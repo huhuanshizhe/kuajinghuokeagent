@@ -70,7 +70,7 @@ export default function Home() {
   };
 
   const switchProject=(id:string)=>{const next=projectList.find(x=>x.id===id)??projectList[0];setProjectId(id);setSelectedName(next.partners[0]?.name??"");setQuery("");setTier("全部层级");notify(`已切换到：${next.name}`);void loadRemotePartners(next)};
-  const runDiscovery=()=>{if(databaseStatus!=="connected"){notify("请先完成 Supabase 与搜索数据源配置");return;}setRunning(true);window.setTimeout(()=>{setRunning(false);notify("发现任务已进入队列")},900)};
+  const runDiscovery=async()=>{if(databaseStatus!=="connected"){notify("请先完成 Supabase 与搜索数据源配置");return;}if(!project.databaseId){notify("当前项目尚未写入数据库");return;}setRunning(true);try{const response=await fetch("/api/discovery",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({campaignId:project.databaseId})});const result=await response.json();if(!response.ok)throw new Error(result.error);notify(`发现完成：找到 ${result.found} 个候选人，${result.qualified} 个符合条件`);await loadRemotePartners(project)}catch(error){notify(error instanceof Error?error.message:"发现任务失败")}finally{setRunning(false)}};
   const createProject=async(event:React.FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
     if(databaseStatus!=="connected"){notify("正式数据库尚未连接，暂时无法创建项目");return;}
